@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Emberfall — Last Light of the Grove</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #03141a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, "Times New Roman", serif;
+    color: #f4ead8;
+  }
+  canvas {
+    width: min(1280px, 97vw);
+    height: auto;
+    display: block;
+    border: 2px solid #0e7c7b;
+    border-radius: 10px;
+    box-shadow: 0 0 48px rgba(255, 159, 28, 0.18);
+    background: #06232b;
+    cursor: pointer;
+  }
+  p.hint {
+    margin: 12px 0 0;
+    font-size: 14px;
+    color: #9fb8b2;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="1280" height="720"></canvas>
+<p class="hint">Emberfall: Last Light of the Grove — WASD to move, Space to dash, P to pause, M to mute. Survive 10 waves and slay Gloomheart.</p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
