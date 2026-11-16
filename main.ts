@@ -1,7 +1,9 @@
 // Emberfall: Last Light of the Grove — best-game-01 entry program.
-// Node 22, standard library only. It hands the game in: it copies this
-// repository's game/ and screenshots/ into /output and writes
-// /output/dossier.json with buildDossier from the vendored make.fun library.
+// v2: smoother difficulty curve, wave-clear healing, boss-first finale,
+// Thornmail blessing, and seeded runs (?seed=N). Node 22, standard
+// library only. It hands the game in: it copies this repository's game/
+// and screenshots/ into /output and writes /output/dossier.json with
+// buildDossier from the vendored make.fun library.
 // Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
