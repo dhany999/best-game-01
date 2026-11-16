@@ -1,5 +1,9 @@
 // config.js — every tuning knob for Emberfall: Last Light of the Grove.
-// One place to balance the game: player, weapons, enemies, waves, XP, boss.
+// v2 balance: the curve is smooth now. Waves 1-2 open busier (skitterers
+// join at once, faster drip), the mid-game cliff is gone (elites arrive at
+// wave 4, weaker and rarer, and never on brutes before wave 6), and the
+// warden recovers between waves (+12 HP on every wave clear) so a run that
+// survives the mid-game can actually reach — and beat — Gloomheart.
 export const CONFIG = {
   // Arena is the whole canvas; the grove is a bounded clearing.
   width: 1280,
@@ -15,52 +19,63 @@ export const CONFIG = {
     iframesAfterHit: 0.7,
     pickupRadius: 26,
     magnetRadius: 130,
+    // The grove mends the warden when a wave is cleared.
+    waveClearHeal: 8,
   },
 
   weapons: {
-    bolt: { damage: 12, rate: 2.4, speed: 560, range: 560, radius: 5 },
-    nova: { damage: 20, radius: 135, interval: 3.4, unlocked: false },
-    thorn: { damage: 9, count: 5, spread: 0.9, interval: 1.7, speed: 430, unlocked: false },
+    bolt: { damage: 13, rate: 2.6, speed: 560, range: 560, radius: 5 },
+    nova: { damage: 20, radius: 135, interval: 3.0, unlocked: false },
+    thorn: { damage: 9, count: 5, spread: 0.9, interval: 1.5, speed: 430, unlocked: false },
   },
 
-  // XP needed to go from `level` to `level + 1`.
+  // XP needed to go from `level` to `level + 1`. A touch kinder than v1 so
+  // the warden is usually level 8-9 when Gloomheart wakes.
   xpNeed(level) {
-    return Math.floor(9 * Math.pow(level, 1.32) + 6);
+    return Math.floor(8 * Math.pow(level, 1.3) + 6);
   },
 
   waves: {
     total: 10,
     // Seconds of calm between waves.
     lull: 3.0,
-    // Base spawn budget for wave n: count = base + perWave * n.
-    baseCount: 5,
-    perWave: 4,
-    // Seconds between spawns shrink as waves rise.
+    // Spawn budget for wave n: count = base + perWave * n.
+    // v2: a flatter ramp — more foes early, fewer piled on late.
+    baseCount: 7,
+    perWave: 3,
+    // Seconds between spawns shrink gently as waves rise.
     spawnInterval(n) {
-      return Math.max(0.28, 1.05 - n * 0.07);
+      return Math.max(0.32, 0.92 - n * 0.05);
     },
+    // Enemy HP grows ~18% a wave now, not 22%: brutes stop being walls.
     hpScale(n) {
-      return 1 + (n - 1) * 0.22;
+      return 1 + (n - 1) * 0.18;
     },
     speedScale(n) {
-      return 1 + (n - 1) * 0.03;
+      return 1 + (n - 1) * 0.025;
     },
+    // Elites: first seen on wave 4 (v1: wave 3), 8% of spawns (v1: 9%).
+    eliteFirstWave: 4,
+    eliteChance: 0.08,
+    // Brutes only go elite from wave 6: an elite brute on wave 3 was a
+    // ~390 HP wall in v1 and ended more runs than the boss did.
+    eliteBruteFirstWave: 6,
   },
 
   enemies: {
     wisp: { hp: 18, speed: 88, damage: 8, radius: 13, xp: 1, score: 10, color: '#b78cff' },
     skitterer: { hp: 12, speed: 158, damage: 6, radius: 10, xp: 1, score: 15, color: '#7fe0c3' },
-    brute: { hp: 64, speed: 56, damage: 16, radius: 21, xp: 3, score: 30, color: '#ff7a59' },
-    spitter: { hp: 26, speed: 72, damage: 10, radius: 13, xp: 2, score: 25, color: '#ffd166', ranged: true, shootInterval: 2.6, shootRange: 380 },
-    elite: { hpMul: 4.2, radiusMul: 1.45, speedMul: 0.92, xpMul: 5, scoreMul: 5, damageMul: 1.5 },
-    boss: { hp: 950, speed: 46, damage: 24, radius: 48, xp: 0, score: 500, color: '#ff2e63' },
+    brute: { hp: 60, speed: 56, damage: 16, radius: 21, xp: 3, score: 30, color: '#ff7a59' },
+    spitter: { hp: 26, speed: 72, damage: 8, radius: 13, xp: 2, score: 25, color: '#ffd166', ranged: true, shootInterval: 2.6, shootRange: 380 },
+    elite: { hpMul: 3.0, radiusMul: 1.45, speedMul: 0.92, xpMul: 5, scoreMul: 5, damageMul: 1.25 },
+    boss: { hp: 850, speed: 46, damage: 24, radius: 48, xp: 0, score: 500, color: '#ff2e63' },
   },
 
   boss: {
     name: 'Gloomheart',
-    summonInterval: 6.0,
+    summonInterval: 7.5,
     burstInterval: 4.2,
-    burstCount: 10,
+    burstCount: 8,
   },
 
   // Palette: ember orange against a deep teal night.

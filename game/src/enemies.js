@@ -1,25 +1,32 @@
 // enemies.js — the shadow wisps: chasers, skitterers, brutes, spitters,
-// elite variants from wave 3, and the wave-10 boss Gloomheart.
+// elite variants from wave 4, and the wave-10 boss Gloomheart.
+// v2: elites are weaker (3.0x HP, 1.25x damage) and brutes only go elite
+// from wave 6; the boss has 800 HP, fires 8-orb bursts and summons slower,
+// so the finale is a fight, not a siege. Foes that touch a warden wearing
+// Thornmail take retaliation damage (see player.js).
 import { CONFIG } from './config.js';
-import { hurtPlayer, spawnBurst } from './player.js';
+import { damageEnemy, hurtPlayer, spawnBurst } from './player.js';
 
 let nextId = 1;
 
+// Build one foe from its kind definition, scaled to the current wave and
+// to its elite multiplier when it is one.
 export function makeEnemy(G, kind, x, y, elite = false) {
   const def = CONFIG.enemies[kind];
-  const hpScale = CONFIG.waves.hpScale(G.wave);
-  const speedScale = CONFIG.waves.speedScale(G.wave);
+  const el = CONFIG.enemies.elite;
+  const hpMul = elite ? el.hpMul : 1;
+  const hp = def.hp * CONFIG.waves.hpScale(G.wave) * hpMul;
   const e = {
     id: nextId++,
     kind,
     x, y,
-    hp: def.hp * hpScale * (elite ? CONFIG.enemies.elite.hpMul : 1),
-    maxHp: def.hp * hpScale * (elite ? CONFIG.enemies.elite.hpMul : 1),
-    speed: def.speed * speedScale * (elite ? CONFIG.enemies.elite.speedMul : 1),
-    damage: def.damage * (elite ? CONFIG.enemies.elite.damageMul : 1),
-    radius: def.radius * (elite ? CONFIG.enemies.elite.radiusMul : 1),
-    xp: def.xp * (elite ? CONFIG.enemies.elite.xpMul : 1),
-    score: def.score * (elite ? CONFIG.enemies.elite.scoreMul : 1),
+    hp,
+    maxHp: hp,
+    speed: def.speed * CONFIG.waves.speedScale(G.wave) * (elite ? el.speedMul : 1),
+    damage: def.damage * (elite ? el.damageMul : 1),
+    radius: def.radius * (elite ? el.radiusMul : 1),
+    xp: def.xp * (elite ? el.xpMul : 1),
+    score: def.score * (elite ? el.scoreMul : 1),
     color: def.color,
     isElite: elite,
     alive: true,
@@ -70,6 +77,75 @@ export function edgeSpawn(G) {
   return { x: -m, y: G.rng.range(0, CONFIG.height) };
 }
 
+// Steer one foe toward the warden; spitters hold their shooting range and
+// skitterers weave. Returns the unit vector toward the player.
+function chase(G, e, dt, nx, ny, d) {
+  const p = G.player;
+  if (e.kind === 'boss') {
+    bossTurn(G, e, dt, nx, ny, d);
+    return;
+  }
+  if (e.kind === 'spitter') {
+    const range = CONFIG.enemies.spitter.shootRange;
+    if (d > range) {
+      e.x += nx * e.speed * dt;
+      e.y += ny * e.speed * dt;
+    } else if (d < 200) {
+      e.x -= nx * e.speed * 0.6 * dt;
+      e.y -= ny * e.speed * 0.6 * dt;
+    }
+    e.shootTimer -= dt;
+    if (e.shootTimer <= 0 && d < range + 40 && p.alive) {
+      e.shootTimer = CONFIG.enemies.spitter.shootInterval;
+      G.enemyShots.push({
+        x: e.x, y: e.y,
+        vx: nx * 210, vy: ny * 210,
+        damage: e.damage, radius: 7, life: 3.2, kind: 'orb',
+      });
+      G.audio.shoot();
+    }
+    return;
+  }
+  if (e.kind === 'skitterer') {
+    // Fast zig-zag charge.
+    const perp = Math.sin(e.wobble * 2.2) * 0.7;
+    e.x += (nx - ny * perp) * e.speed * dt;
+    e.y += (ny + nx * perp) * e.speed * dt;
+    return;
+  }
+  e.x += nx * e.speed * dt;
+  e.y += ny * e.speed * dt;
+}
+
+// Push overlapping foes apart so they never stack into one blob.
+function separate(G, e, dt) {
+  for (const o of G.enemies) {
+    if (o === e || !o.alive) continue;
+    const sx = e.x - o.x;
+    const sy = e.y - o.y;
+    const sd = Math.hypot(sx, sy);
+    const min = e.radius + o.radius;
+    if (sd > 0.01 && sd < min) {
+      const push = ((min - sd) / min) * 26 * dt;
+      e.x += (sx / sd) * push;
+      e.y += (sy / sd) * push;
+    }
+  }
+}
+
+// A touch hurts the warden — and a Thornmail warden hurts back.
+function touchFoe(G, e, d) {
+  const p = G.player;
+  if (!p.alive || e.touchCooldown > 0 || d >= e.radius + p.radius) return;
+  hurtPlayer(G, e.damage);
+  e.touchCooldown = 0.6;
+  const thorns = p.thornsDamage || 0;
+  if (thorns > 0 && e.alive) {
+    // Retaliation is its own hit: it can finish the foe off.
+    damageEnemy(G, e, thorns);
+  }
+}
+
 export function updateEnemies(G, dt) {
   const p = G.player;
   for (const e of G.enemies) {
@@ -81,64 +157,15 @@ export function updateEnemies(G, dt) {
     const dx = p.x - e.x;
     const dy = p.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
-    const nx = dx / d;
-    const ny = dy / d;
-
-    if (e.kind === 'boss') {
-      updateBoss(G, e, dt, nx, ny, d);
-    } else if (e.kind === 'spitter') {
-      // Keep a shooting distance; fire shadow orbs at the warden.
-      if (d > CONFIG.enemies.spitter.shootRange) {
-        e.x += nx * e.speed * dt;
-        e.y += ny * e.speed * dt;
-      } else if (d < 200) {
-        e.x -= nx * e.speed * 0.6 * dt;
-        e.y -= ny * e.speed * 0.6 * dt;
-      }
-      e.shootTimer -= dt;
-      if (e.shootTimer <= 0 && d < CONFIG.enemies.spitter.shootRange + 40 && p.alive) {
-        e.shootTimer = CONFIG.enemies.spitter.shootInterval;
-        G.enemyShots.push({
-          x: e.x, y: e.y,
-          vx: nx * 210, vy: ny * 210,
-          damage: e.damage, radius: 7, life: 3.2, kind: 'orb',
-        });
-        G.audio.shoot();
-      }
-    } else if (e.kind === 'skitterer') {
-      // Fast zig-zag charge.
-      const perp = Math.sin(e.wobble * 2.2) * 0.7;
-      e.x += (nx - ny * perp) * e.speed * dt;
-      e.y += (ny + nx * perp) * e.speed * dt;
-    } else {
-      e.x += nx * e.speed * dt;
-      e.y += ny * e.speed * dt;
-    }
-
-    // Gentle separation so foes do not stack into one blob.
-    for (const o of G.enemies) {
-      if (o === e || !o.alive) continue;
-      const sx = e.x - o.x;
-      const sy = e.y - o.y;
-      const sd = Math.hypot(sx, sy);
-      const min = e.radius + o.radius;
-      if (sd > 0.01 && sd < min) {
-        const push = ((min - sd) / min) * 26 * dt;
-        e.x += (sx / sd) * push;
-        e.y += (sy / sd) * push;
-      }
-    }
-
-    // Touch damage, throttled per enemy.
-    if (p.alive && e.touchCooldown <= 0 && d < e.radius + p.radius) {
-      hurtPlayer(G, e.damage);
-      e.touchCooldown = 0.6;
-    }
+    chase(G, e, dt, dx / d, dy / d, d);
+    separate(G, e, dt);
+    touchFoe(G, e, Math.hypot(p.x - e.x, p.y - e.y));
   }
   G.enemies = G.enemies.filter((e) => e.alive);
 }
 
-function updateBoss(G, boss, dt, nx, ny, d) {
+// Gloomheart: slow advance, radial orb bursts, and wisp summons.
+function bossTurn(G, boss, dt, nx, ny, d) {
   const p = G.player;
   boss.x += nx * boss.speed * dt;
   boss.y += ny * boss.speed * dt;

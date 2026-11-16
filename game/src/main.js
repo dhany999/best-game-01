@@ -1,8 +1,9 @@
 // main.js — bootstrap and game loop for Emberfall: Last Light of the Grove.
 // Builds the shared game state, runs requestAnimationFrame, and routes
 // between the title, playing, level-up, pause, victory and defeat screens.
-// With ?shot=title|play|victory|defeat it renders one deterministic scene
-// for screenshots instead of starting the live loop.
+// ?shot=title|play|victory|defeat renders one deterministic scene for
+// screenshots instead of starting the live loop. ?seed=N starts a live run
+// on a fixed seed, so a run can be shared and replayed exactly.
 import { CONFIG } from './config.js';
 import { makeRng } from './random.js';
 import { Input } from './input.js';
@@ -111,9 +112,9 @@ function update(G, dt) {
     updatePickups(G, dt);
     updateParticles(G, dt);
     if (G.mode === 'playing' && G.pendingLevels > 0) openLevelUp(G);
-    if (G.mode === 'playing' && G.player.alive) {
+    if (G.mode === 'playing' && G.player.alive && G.score > G.best) {
       // Best score tracks live so a mid-run refresh keeps the record.
-      if (G.score > G.best) G.best = G.score;
+      G.best = G.score;
     }
   } else if (G.mode === 'title' || G.mode === 'victory' || G.mode === 'defeat') {
     // Ambient drift behind the menus.
@@ -137,9 +138,14 @@ function frame(G, now, last) {
 function main() {
   const params = new URLSearchParams(window.location.search);
   const shot = params.get('shot');
-  const seed = Number(params.get('seed') || 7);
+  const seedParam = Number(params.get('seed'));
+  // A ?seed=N run is deterministic: same seed, same grove, same waves.
+  // Without one, the grove is seeded from the clock as before.
+  const seed = Number.isFinite(seedParam) && params.has('seed')
+    ? (seedParam >>> 0)
+    : (Date.now() % 2147483647);
 
-  const G = createGame(shot ? seed : (Date.now() % 2147483647));
+  const G = createGame(seed);
 
   // Debug handle for automated playtests (read-only inspection from a test
   // driver); the game itself never reads it.

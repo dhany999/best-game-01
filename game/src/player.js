@@ -1,5 +1,8 @@
 // player.js — the Ember Warden: movement, dash with i-frames, health,
 // and the auto-firing weapon set (ember bolt, nova ring, thorn volley).
+// v2: a Thornmail blessing gives the warden retaliation damage on touch
+// (thornsDamage, spent by enemies.js), and the bolt hits a little harder
+// so the early waves never feel like chipping paint.
 import { CONFIG } from './config.js';
 
 export function createPlayer() {
@@ -28,6 +31,8 @@ export function createPlayer() {
     novaDamage: CONFIG.weapons.nova.damage,
     novaRadius: CONFIG.weapons.nova.radius,
     thornCount: CONFIG.weapons.thorn.count,
+    // Thornmail retaliation: 0 until the blessing is taken.
+    thornsDamage: 0,
     facing: { x: 1, y: 0 },
     walkPhase: 0,
     alive: true,
@@ -103,7 +108,8 @@ function fireThorn(G) {
   G.audio.shoot();
 }
 
-// Shared by projectiles and nova: apply damage, spawn feedback, handle death.
+// Shared by projectiles, nova and thornmail: apply damage, spawn feedback,
+// handle death. A slain boss wins the game.
 export function damageEnemy(G, e, amount, silent = false) {
   if (!e.alive) return;
   e.hp -= amount;
@@ -128,8 +134,8 @@ export function damageEnemy(G, e, amount, silent = false) {
         bob: G.rng.range(0, Math.PI * 2),
       });
     }
-    if (e.isElite && G.rng.chance(0.5)) {
-      G.pickups.push({ x: e.x, y: e.y, vx: 0, vy: 0, value: 25, kind: 'heart', bob: 0 });
+    if (e.isElite && G.rng.chance(0.65)) {
+      G.pickups.push({ x: e.x, y: e.y, vx: 0, vy: 0, value: 30, kind: 'heart', bob: 0 });
     }
     if (e.kind === 'boss') {
       G.boss = null;
@@ -193,6 +199,7 @@ export function winGame(G) {
   spawnBurst(G, G.player.x, G.player.y, '#ffd166', 60, 380);
 }
 
+// One frame of warden: cooldowns, dash, movement, then the auto-weapons.
 export function updatePlayer(G, dt) {
   const p = G.player;
   if (!p.alive) return;

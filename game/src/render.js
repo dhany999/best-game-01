@@ -333,6 +333,12 @@ function drawHUD(ctx, G) {
   bar(ctx, 52, 46, 220, 10, p.xp / CONFIG.xpNeed(p.level), '#ff9f1c');
   ctx.fillText(`${p.xp} / ${CONFIG.xpNeed(p.level)} XP`, 280, 56);
 
+  // Dash readiness: a full teal bar means Space is ready to fire.
+  const dashFrac = p.dashCooldown > 0 ? 1 - Math.max(0, p.dashTimer) / p.dashCooldown : 1;
+  ctx.fillText('DASH', 18, 82);
+  bar(ctx, 52, 70, 220, 8, dashFrac, dashFrac >= 1 ? '#2ec4b6' : '#0e7c7b');
+  ctx.fillText(dashFrac >= 1 ? 'ready' : '…', 280, 80);
+
   // Right side: wave, timer, kills, score.
   ctx.textAlign = 'right';
   const mm = Math.floor(G.time / 60);
@@ -439,10 +445,11 @@ export function drawTitle(ctx, G) {
   ctx.font = '16px Georgia, serif';
   ctx.fillText('WASD / arrows — move      Space — dash (brief immunity)', CONFIG.width / 2, 330);
   ctx.fillText('Attacks fire on their own — gather embers, level up, choose blessings', CONFIG.width / 2, 356);
+  ctx.fillText('The grove mends you +8 HP after every wave you clear.', CONFIG.width / 2, 382);
   if (G.best > 0) {
     ctx.fillStyle = '#ffd166';
     ctx.font = 'bold 17px Georgia, serif';
-    ctx.fillText(`Best score: ${G.best}`, CONFIG.width / 2, 392);
+    ctx.fillText(`Best score: ${G.best}`, CONFIG.width / 2, 416);
   }
   addButton(G, CONFIG.width / 2 - 130, 430, 260, 56, '▶  PLAY', 'start');
   ctx.fillStyle = C.textDim;

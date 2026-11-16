@@ -1,7 +1,11 @@
 // upgrades.js — the blessings offered at each level-up.
 // Three cards, one choice: new weapons, stronger fire, or a tougher warden.
+// v2 adds Thornmail: foes that touch the warden take damage back, so a
+// build can answer the swarm instead of only outrunning it.
 import { CONFIG } from './config.js';
 
+// Every blessing: an id, a card face, when it may be offered, and what it
+// does to the warden. Damage and fire-rate blessings stack multiplicatively.
 export const BLESSINGS = [
   {
     id: 'bolt-damage', name: 'Ember Might', icon: '🔥',
@@ -56,6 +60,12 @@ export const BLESSINGS = [
     desc: 'Thorn Volley: +2 thorns per volley',
     canOffer: (p) => p.thornUnlocked,
     apply: (p) => { p.thornCount += 2; },
+  },
+  {
+    id: 'thornmail', name: 'Thornmail', icon: '🌵',
+    desc: 'Foes that touch you take 15 damage back',
+    canOffer: (p) => p.thornsDamage < 45,
+    apply: (p) => { p.thornsDamage = (p.thornsDamage || 0) + 15; },
   },
   {
     id: 'magnet', name: 'Ember Lure', icon: '🧲',
