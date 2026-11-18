@@ -14,6 +14,7 @@ export function resetRun(G) {
   G.floaters = [];
   G.novaFx = [];
   G.boss = null;
+  G.shrine = null;
   G.score = 0;
   G.kills = 0;
   G.time = 0;

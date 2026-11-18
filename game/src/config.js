@@ -1,9 +1,11 @@
 // config.js — every tuning knob for Emberfall: Last Light of the Grove.
-// v2 balance: the curve is smooth now. Waves 1-2 open busier (skitterers
+// v3 balance: the curve is smooth now. Waves 1-2 open busier (skitterers
 // join at once, faster drip), the mid-game cliff is gone (elites arrive at
 // wave 4, weaker and rarer, and never on brutes before wave 6), and the
 // warden recovers between waves (+12 HP on every wave clear) so a run that
 // survives the mid-game can actually reach — and beat — Gloomheart.
+// v3 adds the shade (a lunger that telegraphs, then strikes from wave 3)
+// and the Moonshrine (stand in its ring to channel a boon, once per wave).
 export const CONFIG = {
   // Arena is the whole canvas; the grove is a bounded clearing.
   width: 1280,
@@ -67,8 +69,29 @@ export const CONFIG = {
     skitterer: { hp: 12, speed: 158, damage: 6, radius: 10, xp: 1, score: 15, color: '#7fe0c3' },
     brute: { hp: 60, speed: 56, damage: 16, radius: 21, xp: 3, score: 30, color: '#ff7a59' },
     spitter: { hp: 26, speed: 72, damage: 8, radius: 13, xp: 2, score: 25, color: '#ffd166', ranged: true, shootInterval: 2.6, shootRange: 380 },
+    // Shade: a lunger. It creeps close, flashes a telegraph line while it
+    // aims, then dashes at the warden. Dodge the line, not the foe.
+    shade: { hp: 24, speed: 74, damage: 8, radius: 12, xp: 2, score: 35, color: '#c77dff', lunger: true },
     elite: { hpMul: 3.0, radiusMul: 1.45, speedMul: 0.92, xpMul: 5, scoreMul: 5, damageMul: 1.25 },
     boss: { hp: 850, speed: 46, damage: 24, radius: 48, xp: 0, score: 500, color: '#ff2e63' },
+  },
+
+  // Shade lunge tuning: aim (telegraph) -> lunge -> rest, then aim again.
+  // The telegraph is long on purpose: a warden who sees the dashed line
+  // and sidesteps is never hit, so the shade punishes standing still,
+  // not moving.
+  shade: {
+    aimTime: 0.85,
+    lungeTime: 0.32,
+    lungeSpeed: 380,
+    restTime: 1.2,
+  },
+
+  // Moonshrine: one ring per wave. Stand inside it to channel; leave and
+  // the channel drains. A full channel grants one random boon.
+  shrine: {
+    radius: 46,
+    channelTime: 2.5,
   },
 
   boss: {

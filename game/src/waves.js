@@ -4,8 +4,11 @@
 // boss wait behind a queue of adds.
 // v2: skitterers join on wave 1 (waves 1-2 were empty walks in v1),
 // brutes on wave 3, spitters on wave 4, elites from wave 4 at 8%.
+// v3: shades (lungers) join on wave 3, and a Moonshrine spawns with every
+// wave — a ring worth standing in while the grove burns around it.
 import { CONFIG } from './config.js';
 import { edgeSpawn, makeBoss, makeEnemy } from './enemies.js';
+import { spawnShrine } from './shrine.js';
 
 // Mix weights per wave: how much of the wave is each foe kind.
 // The weights are picked in order, so a wave always opens with wisps and
@@ -13,11 +16,11 @@ import { edgeSpawn, makeBoss, makeEnemy } from './enemies.js';
 function waveMix(n) {
   if (n <= 1) return [['wisp', 4], ['skitterer', 1]];
   if (n === 2) return [['wisp', 3], ['skitterer', 2]];
-  if (n === 3) return [['wisp', 4], ['skitterer', 2], ['brute', 2]];
-  if (n === 4) return [['wisp', 3], ['skitterer', 2], ['brute', 2], ['spitter', 1]];
-  if (n <= 6) return [['wisp', 3], ['skitterer', 2], ['brute', 2], ['spitter', 2]];
-  if (n <= 8) return [['wisp', 2], ['skitterer', 2], ['brute', 3], ['spitter', 2]];
-  return [['wisp', 2], ['skitterer', 2], ['brute', 3], ['spitter', 3]];
+  if (n === 3) return [['wisp', 3], ['skitterer', 2], ['brute', 2], ['shade', 1]];
+  if (n === 4) return [['wisp', 3], ['skitterer', 2], ['brute', 2], ['spitter', 1], ['shade', 1]];
+  if (n <= 6) return [['wisp', 3], ['skitterer', 2], ['brute', 2], ['spitter', 2], ['shade', 1]];
+  if (n <= 8) return [['wisp', 2], ['skitterer', 2], ['brute', 3], ['spitter', 2], ['shade', 1]];
+  return [['wisp', 2], ['skitterer', 2], ['brute', 3], ['spitter', 3], ['shade', 2]];
 }
 
 // Pick one kind from a weighted mix using the run's RNG.
@@ -45,7 +48,12 @@ export function startWave(G, n) {
   G.wave = n;
   G.waveState = 'spawning';
   G.spawnTimer = 0.5;
-  const count = CONFIG.waves.baseCount + CONFIG.waves.perWave * n;
+  // The finale is Gloomheart's fight, not a swarm: wave 10 opens with
+  // fewer adds (24) than the ramp would give (37), so the boss's bursts
+  // and summons — not a wall of bodies — are what the warden answers.
+  const count = n === CONFIG.waves.total
+    ? 24
+    : CONFIG.waves.baseCount + CONFIG.waves.perWave * n;
   const mix = waveMix(n);
   const queue = [];
   for (let i = 0; i < count; i++) {
@@ -61,6 +69,9 @@ export function startWave(G, n) {
   G.spawnQueue = queue;
   G.waveBanner = `WAVE ${n}${n === CONFIG.waves.total ? ' — GLOOMHEART AWAKENS' : ''}`;
   G.waveBannerTimer = 2.4;
+  // A fresh Moonshrine with every wave: the last one fades, unclaimed or
+  // not, and a new ring appears somewhere else in the grove.
+  spawnShrine(G);
 }
 
 // Mend the warden a little when a wave clears: the grove itself keeps a
@@ -76,6 +87,12 @@ function clearWave(G) {
       x: p.x, y: p.y - 30,
       text: `+${healed} HP — the grove mends you`, life: 1.4, maxLife: 1.4, color: '#7fe0c3',
     });
+  }
+  // A Moonlit Ward renews when the wave clears: a ward the warden earned
+  // comes back, so the next wave opens with one hit banked.
+  if ((p.blessings || []).includes('moonlit-ward') && !p.shield) {
+    p.shield = true;
+    G.floaters.push({ x: p.x, y: p.y - 52, text: 'Moonlit Ward renewed', life: 1.4, maxLife: 1.4, color: '#c77dff' });
   }
   G.score += 50 * G.wave;
   G.audio.waveClear();

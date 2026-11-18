@@ -1,7 +1,10 @@
 // shots.js — deterministic scenes for screenshots.
 // ?shot=title|play|victory|defeat with an optional ?seed= renders one fixed
 // scene at a fixed simulated time and sets window.__shotReady when done.
-// The play scene is a real 18-second simulation with a scripted pilot.
+// The play scene is a real 50-second simulation with a scripted pilot.
+// v3: the play scene opens on wave 4 with the warden already leveled and
+// armed (nova ring, thorn volley, Ember Might, Thornmail), so the frame
+// shows every weapon, a shade, an elite and the Moonshrine at once.
 import { CONFIG } from './config.js';
 import { makeRng } from './random.js';
 import { resetRun } from './ui.js';
@@ -12,7 +15,8 @@ import { updateProjectiles } from './projectiles.js';
 import { updatePickups } from './pickups.js';
 import { updateParticles } from './render.js';
 import { updateWaves } from './waves.js';
-import { rollChoices, applyBlessing } from './upgrades.js';
+import { rollChoices, applyBlessing, BLESSINGS } from './upgrades.js';
+import { updateShrine } from './shrine.js';
 
 const DT = 1 / 60;
 
@@ -23,6 +27,7 @@ function stepWorld(G, dt) {
   updateProjectiles(G, dt);
   updatePickups(G, dt);
   updateParticles(G, dt);
+  updateShrine(G, dt);
   G.shake = 0;
   if (G.pendingLevels > 0) {
     const choices = rollChoices(G, 3);
@@ -83,13 +88,36 @@ export function buildShot(G, shot, seed) {
     resetRun(G);
     G.mode = 'playing';
     G.input = pilotInput(G);
-    startWave(G, 1);
-    // 50 seconds of real combat at a fixed timestep. The pilot fights through
-    // waves 1-3, levels up and earns blessings along the way, and reaches
-    // wave 3 — brutes, skitterers and elites — with a leveled warden, so the
-    // frame stays busy with foes, bolts and damage numbers.
+    // The warden arrives mid-run: level 5, four blessings already taken
+    // (nova ring, thorn volley, Ember Might, Thornmail), so the frame shows
+    // every weapon at once and the HUD's blessings row is filled.
+    G.player.level = 5;
+    for (const id of ['nova-ring', 'thorn-volley', 'bolt-damage', 'thornmail']) {
+      applyBlessing(G, BLESSINGS.find((b) => b.id === id));
+    }
+    startWave(G, 4);
+    // The Moonshrine sits on the pilot's orbit path, top right, so the
+    // ring and its crescent moon read in the frame.
+    if (G.shrine) { G.shrine.x = 880; G.shrine.y = 200; }
+    // 50 seconds of real combat at a fixed timestep. The pilot fights
+    // through waves 4-5, levels up and earns blessings along the way, and
+    // reaches wave 5 — brutes, spitters, shades and elites — with a leveled
+    // warden, so the frame stays busy with foes, bolts and damage numbers.
     for (let i = 0; i < 50 * 60; i++) {
       if (!G.player.alive) break;
+      G.time += DT;
+      stepWorld(G, DT);
+    }
+    // The photo must catch combat, not a lull: the warden clears waves
+    // fast, so keep stepping until the field is busy (12+ foes alive, so
+    // the wave's mix — brutes, spitters, shades, elites — is on screen),
+    // opening a fresh wave first if the last one just cleared. This only
+    // moves the moment of the photo — the simulation stays real.
+    for (let i = 0; i < 40 * 60 && G.enemies.length < 12; i++) {
+      if (!G.player.alive) break;
+      if (G.waveState === 'lull' && G.spawnQueue.length === 0) {
+        startWave(G, Math.min(G.wave + 1, CONFIG.waves.total));
+      }
       G.time += DT;
       stepWorld(G, DT);
     }

@@ -35,6 +35,14 @@ export function makeEnemy(G, kind, x, y, elite = false) {
     wobble: G.rng.range(0, Math.PI * 2),
     touchCooldown: 0,
   };
+  if (kind === 'shade') {
+    // A shade starts by aiming: it tracks the warden, flashes its
+    // telegraph, then lunges. See chase() for the aim/lunge/rest cycle.
+    e.lunge = 'aim';
+    e.lungeTimer = CONFIG.shade.aimTime;
+    e.aimX = 0;
+    e.aimY = 0;
+  }
   return e;
 }
 
@@ -111,6 +119,39 @@ function chase(G, e, dt, nx, ny, d) {
     const perp = Math.sin(e.wobble * 2.2) * 0.7;
     e.x += (nx - ny * perp) * e.speed * dt;
     e.y += (ny + nx * perp) * e.speed * dt;
+    return;
+  }
+  if (e.kind === 'shade') {
+    // Aim, lunge, rest, aim again. While aiming it tracks the warden and
+    // flashes its telegraph (drawn in render.js); the lunge itself is a
+    // straight dash along the aim it locked when the telegraph ended.
+    const sh = CONFIG.shade;
+    e.lungeTimer -= dt;
+    if (e.lunge === 'aim') {
+      e.aimX = nx;
+      e.aimY = ny;
+      if (e.lungeTimer <= 0) {
+        e.lunge = 'lunge';
+        e.lungeTimer = sh.lungeTime;
+      }
+    } else if (e.lunge === 'lunge') {
+      e.x += e.aimX * sh.lungeSpeed * dt;
+      e.y += e.aimY * sh.lungeSpeed * dt;
+      if (e.lungeTimer <= 0) {
+        e.lunge = 'rest';
+        e.lungeTimer = sh.restTime;
+      }
+    } else {
+      e.x += nx * e.speed * 0.5 * dt;
+      e.y += ny * e.speed * 0.5 * dt;
+      if (e.lungeTimer <= 0) {
+        e.lunge = 'aim';
+        e.lungeTimer = sh.aimTime;
+      }
+    }
+    // A lunge must not carry the shade out of the grove.
+    e.x = Math.max(-40, Math.min(CONFIG.width + 40, e.x));
+    e.y = Math.max(-40, Math.min(CONFIG.height + 40, e.y));
     return;
   }
   e.x += nx * e.speed * dt;

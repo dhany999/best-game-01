@@ -16,6 +16,7 @@ import { updateWaves } from './waves.js';
 import { render, updateParticles } from './render.js';
 import { resetRun, startGame, openLevelUp, handleClick, handleMenuKeys } from './ui.js';
 import { buildShot } from './shots.js';
+import { updateShrine } from './shrine.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -37,6 +38,9 @@ function saveBest(value) {
 }
 
 // The grove scenery: charred trees around the clearing + drifting embers.
+// v3: the clearing floor itself has texture now — grass tufts, scorched
+// patches and faint ember glints — and four stone braziers burn at the
+// quarter points, so the grove reads as a place, not an empty field.
 function makeScenery(rng) {
   const trees = [];
   for (let i = 0; i < 26; i++) {
@@ -57,7 +61,27 @@ function makeScenery(rng) {
   for (let i = 0; i < 42; i++) {
     embers.push({ x: rng.range(0, CONFIG.width), y: rng.range(0, CONFIG.height), speed: rng.range(6, 20), size: rng.range(1, 2.6), phase: rng.range(0, Math.PI * 2) });
   }
-  return { trees, embers };
+  // Ground patches: grass tufts, scorched earth and ember glints, each with
+  // a stored angle so the same grove draws the same way every run.
+  const patches = [];
+  for (let i = 0; i < 64; i++) {
+    const roll = rng.next();
+    patches.push({
+      x: rng.range(50, CONFIG.width - 50),
+      y: rng.range(60, CONFIG.height - 50),
+      r: rng.range(6, 18),
+      a: rng.range(0, Math.PI * 2),
+      kind: roll < 0.45 ? 'grass' : roll < 0.75 ? 'scorch' : 'glint',
+    });
+  }
+  // Four braziers at the quarter points: stone bowls with a live flame.
+  const braziers = [
+    { x: 320, y: 180, phase: rng.range(0, Math.PI * 2) },
+    { x: 960, y: 180, phase: rng.range(0, Math.PI * 2) },
+    { x: 320, y: 540, phase: rng.range(0, Math.PI * 2) },
+    { x: 960, y: 540, phase: rng.range(0, Math.PI * 2) },
+  ];
+  return { trees, embers, patches, braziers };
 }
 
 function createGame(seed) {
@@ -91,6 +115,9 @@ function createGame(seed) {
     boss: null,
     trees: scenery.trees,
     embers: scenery.embers,
+    patches: scenery.patches,
+    braziers: scenery.braziers,
+    shrine: null,
     shake: 0,
     best: loadBest(),
     pendingLevels: 0,
@@ -111,6 +138,7 @@ function update(G, dt) {
     updateProjectiles(G, dt);
     updatePickups(G, dt);
     updateParticles(G, dt);
+    updateShrine(G, dt);
     if (G.mode === 'playing' && G.pendingLevels > 0) openLevelUp(G);
     if (G.mode === 'playing' && G.player.alive && G.score > G.best) {
       // Best score tracks live so a mid-run refresh keeps the record.

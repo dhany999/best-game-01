@@ -2,8 +2,25 @@
 // the wisps, particles, floating numbers, the HUD, and every menu screen.
 // All art is procedural canvas drawing; there are no image assets.
 import { CONFIG } from './config.js';
+import { drawShrine } from './shrine.js';
 
 const C = CONFIG.colors;
+
+// Card faces for the HUD's blessings row (mirrors upgrades.js).
+const BLESSING_ICONS = {
+  'bolt-damage': '🔥',
+  'fire-rate': '⚡',
+  'swift-boots': '💨',
+  heartwood: '❤️',
+  'dash-charm': '🌀',
+  'nova-ring': '💥',
+  'nova-power': '☀️',
+  'thorn-volley': '🌿',
+  'thorn-more': '🌹',
+  thornmail: '🌵',
+  'moonlit-ward': '🌙',
+  magnet: '🧲',
+};
 
 export function updateParticles(G, dt) {
   for (const pt of G.particles) {
@@ -48,6 +65,50 @@ function drawBackground(ctx, G) {
   glow.addColorStop(1, 'rgba(255,159,28,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+  // The clearing floor: grass tufts, scorched patches and ember glints.
+  for (const pt of G.patches || []) {
+    if (pt.kind === 'grass') {
+      ctx.strokeStyle = 'rgba(46,196,182,0.28)';
+      ctx.lineWidth = 1.5;
+      for (let s = -1; s <= 1; s++) {
+        const a = pt.a + s * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+        ctx.lineTo(pt.x + Math.cos(a) * pt.r, pt.y + Math.sin(a) * pt.r * 0.6);
+        ctx.stroke();
+      }
+    } else if (pt.kind === 'scorch') {
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.beginPath();
+      ctx.ellipse(pt.x, pt.y, pt.r, pt.r * 0.55, pt.a, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const tw = 0.25 + 0.25 * Math.sin(G.time * 2 + pt.a * 5);
+      ctx.fillStyle = `rgba(255,159,28,${tw})`;
+      circle(ctx, pt.x, pt.y, 2);
+    }
+  }
+
+  // Four stone braziers burning at the quarter points.
+  for (const b of G.braziers || []) {
+    const flick = 0.5 + Math.sin(G.time * 6 + b.phase) * 0.3;
+    const bg = ctx.createRadialGradient(b.x, b.y - 8, 2, b.x, b.y - 8, 60);
+    bg.addColorStop(0, `rgba(255,159,28,${0.28 * flick + 0.08})`);
+    bg.addColorStop(1, 'rgba(255,159,28,0)');
+    ctx.fillStyle = bg;
+    circle(ctx, b.x, b.y - 8, 60);
+    ctx.fillStyle = '#1a2b30';
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y + 4, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,${Math.floor(120 + 80 * flick)},40,${0.75 * flick + 0.2})`;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y - 20 - 4 * flick);
+    ctx.quadraticCurveTo(b.x + 7, b.y - 8, b.x, b.y + 2);
+    ctx.quadraticCurveTo(b.x - 7, b.y - 8, b.x, b.y - 20 - 4 * flick);
+    ctx.fill();
+  }
 
   // Charred trees ringing the clearing.
   for (const t of G.trees) {
@@ -114,6 +175,15 @@ function drawPlayer(ctx, G) {
   ctx.fillStyle = '#ffd166';
   circle(ctx, x - 3, y - 10, 1.6);
   circle(ctx, x + 3, y - 10, 1.6);
+
+  // Moonlit Ward: a pale violet ring while a ward is up to absorb a hit.
+  if (p.shield) {
+    ctx.strokeStyle = `rgba(233,213,255,${0.6 + 0.3 * Math.sin(G.time * 4)})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, y, p.radius + 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   // Dash cooldown ring.
   if (p.dashTimer > 0) {
@@ -189,6 +259,35 @@ function drawEnemy(ctx, G, e) {
     ctx.fillStyle = '#fff3c4';
     circle(ctx, x - 5, y - 5, 2);
     circle(ctx, x + 5, y - 5, 2);
+  } else if (e.kind === 'shade') {
+    // A lunger: a tilted violet diamond with one pale eye. While it aims,
+    // a dashed telegraph line shows exactly where it is about to strike.
+    if (e.lunge === 'aim') {
+      const len = 150;
+      ctx.strokeStyle = `rgba(199,125,255,${0.45 + 0.4 * Math.sin(G.time * 10)})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + e.aimX * len, y + e.aimY * len);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(233,213,255,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, e.radius + 5 + Math.sin(G.time * 8) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 4 + e.wobble * 0.1);
+    ctx.fillStyle = flash ? '#ffffff' : e.color;
+    ctx.fillRect(-e.radius * 0.75, -e.radius * 0.75, e.radius * 1.5, e.radius * 1.5);
+    ctx.restore();
+    ctx.fillStyle = '#1a0b2e';
+    circle(ctx, x, y - 1, 3);
+    ctx.fillStyle = '#e9d5ff';
+    circle(ctx, x, y - 1, 1.5);
   } else if (e.kind === 'boss') {
     // Gloomheart: a huge shadow heart with burning cracks.
     const pulse = 1 + Math.sin(G.time * 3) * 0.04;
@@ -339,6 +438,18 @@ function drawHUD(ctx, G) {
   bar(ctx, 52, 70, 220, 8, dashFrac, dashFrac >= 1 ? '#2ec4b6' : '#0e7c7b');
   ctx.fillText(dashFrac >= 1 ? 'ready' : '…', 280, 80);
 
+  // Blessings taken this run, as a row of icons under the bars.
+  const owned = [...new Set(p.blessings || [])];
+  if (owned.length > 0) {
+    ctx.fillText('BLESSINGS', 18, 106);
+    ctx.font = '17px serif';
+    owned.forEach((id, i) => {
+      const b = BLESSING_ICONS[id] || '✦';
+      ctx.fillText(b, 118 + i * 26, 107);
+    });
+    ctx.font = 'bold 15px Georgia, serif';
+  }
+
   // Right side: wave, timer, kills, score.
   ctx.textAlign = 'right';
   const mm = Math.floor(G.time / 60);
@@ -349,6 +460,9 @@ function drawHUD(ctx, G) {
   ctx.font = 'bold 15px Georgia, serif';
   ctx.fillStyle = C.textDim;
   ctx.fillText(`${mm}:${ss}   ☠ ${G.kills}   ★ ${G.score}`, CONFIG.width - 18, 56);
+  // Foes still to come this wave: the queue plus the living field.
+  const foesLeft = G.enemies.length + (G.spawnQueue ? G.spawnQueue.length : 0);
+  ctx.fillText(`FOES LEFT ${foesLeft}`, CONFIG.width - 18, 80);
 
   // Wave banner.
   if (G.waveBannerTimer > 0) {
@@ -430,6 +544,24 @@ function statLine(ctx, label, value, x, y) {
 
 export function drawTitle(ctx, G) {
   ctx.textAlign = 'center';
+  // Three wisps drift behind the title, so the menu itself shows the foe.
+  const wispSpots = [
+    { x: 300, y: 250, ph: 0 },
+    { x: 990, y: 230, ph: 2.1 },
+    { x: 940, y: 470, ph: 4.2 },
+  ];
+  for (const w of wispSpots) {
+    const wy = w.y + Math.sin(G.time * 1.2 + w.ph) * 8;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#b78cff';
+    circle(ctx, w.x, wy, 15);
+    ctx.globalAlpha = 0.4;
+    circle(ctx, w.x, wy + 10, 9);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#1a0b2e';
+    circle(ctx, w.x - 5, wy - 2, 2.5);
+    circle(ctx, w.x + 5, wy - 2, 2.5);
+  }
   ctx.fillStyle = '#ffd166';
   ctx.font = 'bold 64px Georgia, serif';
   ctx.fillText('EMBERFALL', CONFIG.width / 2, 168);
@@ -563,6 +695,7 @@ export function render(G) {
   }
   drawBackground(ctx, G);
   if (G.mode !== 'title') {
+    drawShrine(ctx, G);
     drawPickups(ctx, G);
     for (const e of G.enemies) drawEnemy(ctx, G, e);
     drawProjectiles(ctx, G);

@@ -68,6 +68,12 @@ export const BLESSINGS = [
     apply: (p) => { p.thornsDamage = (p.thornsDamage || 0) + 15; },
   },
   {
+    id: 'moonlit-ward', name: 'Moonlit Ward', icon: '🌙',
+    desc: 'A pale ward blocks one hit; it renews each wave',
+    canOffer: (p) => !(p.blessings || []).includes('moonlit-ward'),
+    apply: (p) => { p.shield = true; },
+  },
+  {
     id: 'magnet', name: 'Ember Lure', icon: '🧲',
     desc: 'Embers fly to you from farther away',
     canOffer: () => true,
@@ -90,6 +96,10 @@ export function rollChoices(G, count = 3) {
 }
 
 export function applyBlessing(G, blessing) {
+  // Remember the blessing for the HUD's row of icons (and for the
+  // Moonlit Ward's per-wave renewal in waves.js).
+  G.player.blessings = G.player.blessings || [];
+  G.player.blessings.push(blessing.id);
   blessing.apply(G.player);
   G.floaters.push({
     x: G.player.x, y: G.player.y - 30,

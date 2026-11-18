@@ -33,6 +33,12 @@ export function createPlayer() {
     thornCount: CONFIG.weapons.thorn.count,
     // Thornmail retaliation: 0 until the blessing is taken.
     thornsDamage: 0,
+    // Moonlit Ward: true while a ward is up to absorb one hit. Set by the
+    // blessing, spent by hurtPlayer, renewed by waves.js on a wave clear.
+    shield: false,
+    // Blessings taken this run, in the order they were chosen; the HUD
+    // draws them as a row of icons.
+    blessings: [],
     facing: { x: 1, y: 0 },
     walkPhase: 0,
     alive: true,
@@ -165,6 +171,16 @@ export function spawnBurst(G, x, y, color, count, speed) {
 export function hurtPlayer(G, amount) {
   const p = G.player;
   if (p.iframes > 0 || p.dashTimeLeft > 0 || !p.alive) return;
+  // A Moonlit Ward absorbs one hit whole, then breaks: no damage, no
+  // knockback, just a pale flash and a WARD! floater.
+  if (p.shield) {
+    p.shield = false;
+    p.iframes = 0.4;
+    G.floaters.push({ x: p.x, y: p.y - 30, text: 'WARD!', life: 1.0, maxLife: 1.0, color: '#c77dff' });
+    spawnBurst(G, p.x, p.y, '#c77dff', 12, 200);
+    G.audio.hit();
+    return;
+  }
   p.hp -= amount;
   p.iframes = CONFIG.player.iframesAfterHit;
   p.flash = 0.25;
