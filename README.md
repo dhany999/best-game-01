@@ -39,19 +39,22 @@ bar, wave, timer, kills and score — and a boss HP bar when Gloomheart lives.
 
 - **3 weapons**: ember bolt (always on), nova ring (unlockable radial pulse),
   thorn volley (unlockable spread shot) — each with upgrade blessings.
-- **11 blessings**: damage, fire rate, move speed, max HP, dash cooldown,
+- **12 blessings**: damage, fire rate, move speed, max HP, dash cooldown,
   ember magnet, weapon unlocks and weapon upgrades — plus **Thornmail**,
-  which makes foes that touch you take damage back.
-- **5 foes**: wisp (chaser), skitterer (fast zig-zag, from wave 1),
-  brute (tanky), spitter (ranged orbs), elite variants — plus the boss with
-  radial bursts and wisp summons.
+  which makes foes that touch you take damage back, and **Moonlit Ward**,
+  a shield that blocks one hit and renews every wave.
+- **6 foes**: wisp (chaser), skitterer (fast zig-zag, from wave 1),
+  brute (tanky), spitter (ranged orbs), **shade (telegraphed lunger, from
+  wave 3)**, elite variants — plus the boss with radial bursts and summons.
+- **Moonshrine**: a glowing ring spawns with every wave. Stand in it to
+  channel a boon — a heal, a moonfire that wounds every foe, or an ember
+  rain. Standing still while wisps close in is the trade.
 - **Feel**: hit particles, screen shake, hit flash, floating damage numbers,
   synthesized WebAudio SFX (hit, pickup, level-up, boss roar, victory/defeat)
   with a mute toggle. Ember-orange on deep teal night.
-- **Balance** (v2): a smooth curve — busier opening waves, elites later and
-  weaker, brutes never elite before wave 6, the boss at 850 HP with smaller
-  bursts, and wave-clear healing. An autoplayed test pilot now wins the run
-  instead of dying on wave 5.
+- **Balance** (v3): the v2 curve, plus shades from wave 3 and the shrine's
+  boons. An autoplayed test pilot still wins the run — the victory path is
+  genuinely playable, not a poster.
 
 ## Play it
 
@@ -96,7 +99,8 @@ game/
     enemies.js        wisps, elites, boss Gloomheart
     projectiles.js    bolts, thorns, enemy orbs
     pickups.js        embers (XP) and hearts
-    waves.js          wave director + wave-clear healing
+    waves.js          wave director + wave-clear healing + Moonshrine spawn
+    shrine.js         Moonshrine: channel ring, random boon on claim
     upgrades.js       blessings / level-up choices
     audio.js          synthesized WebAudio SFX
     render.js         all drawing: grove, entities, HUD, menus

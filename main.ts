@@ -1,7 +1,9 @@
 // Emberfall: Last Light of the Grove — best-game-01 entry program.
-// v2: smoother difficulty curve, wave-clear healing, boss-first finale,
-// Thornmail blessing, and seeded runs (?seed=N). Node 22, standard
-// library only. It hands the game in: it copies this repository's game/
+// v3: the shade lunger, the Moonshrine channel, the Moonlit Ward blessing,
+// braziers and ground texture, a blessings row and foes-left on the HUD,
+// and screenshots re-rendered at exactly 1280x720 (v2's 1284-wide shots
+// failed the gate's screenshots row, so v2 never reached the judge).
+// Node 22, standard library only. It hands the game in: it copies this repository's game/
 // and screenshots/ into /output and writes /output/dossier.json with
 // buildDossier from the vendored make.fun library.
 // Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
